@@ -1,11 +1,11 @@
-// Code your testbench here
-// or browse Examples
+`include "my_classes.sv"
+
 interface patt_if
 (
     input bit clk
 );
-    logic rst_n;
-    logic bit_stream;
+    logic rst_n = 1'b0;
+    logic bit_stream = 1'b0;
     logic found;
 
     clocking cb @( posedge clk );
@@ -23,7 +23,7 @@ endinterface : patt_if
 
 module tb;
 
-parameter [ 3:0 ] PATTERN = 4'b1101;
+parameter [ 3:0 ] PATTERN = 4'b1000;
 
 logic clk;
 
@@ -31,7 +31,7 @@ logic clk;
 patt_if u_patt_if( .clk( clk ) );
 
 // instantiate the main program
-// main_prg #( .PATTERN( PATTERN ) ) u_main_prg( .i_f( u_patt_if ) );
+main_prg #( .PATTERN( PATTERN ) ) u_main_prg( .i_f( u_patt_if ) );
 
 initial
 begin
@@ -47,11 +47,8 @@ begin
     forever #5 clk = ~clk;
 end
   
-initial
-  #100 $finish;
-
 // instantiate the DUT
-pattern #( .PATTERN( PATTERN ) )
+pattern #( .PATTERN( PATTERN ) ) u_pattern
 (
     .clk( clk ),
     .rst_n( u_patt_if.rst_n ),
@@ -61,3 +58,27 @@ pattern #( .PATTERN( PATTERN ) )
 );
 
 endmodule
+
+// =======================================================================
+
+program automatic main_prg
+    #( parameter [ 3:0 ] PATTERN = 4'b1110 )
+    ( patt_if i_f );
+
+MyEnv#( .PATTERN( PATTERN ) ) env;
+virtual patt_if.TB sig_h = i_f.TB;
+
+initial
+begin
+    env = new( sig_h );
+
+    sig_h.cb.rst_n <= 1'b0;
+    #50 sig_h.cb.rst_n <= 1'b1;
+    repeat( 10 ) @( sig_h.cb );
+
+    env.run();
+
+    repeat( 1000 ) @( sig_h.cb );
+end
+
+endprogram
